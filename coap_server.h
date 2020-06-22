@@ -9,6 +9,7 @@ class coapOption{
   public:
   uint8_t delta = 0;
   uint8_t optionLength = 0;  
+  uint8_t *optionValue;
 };
 
 
