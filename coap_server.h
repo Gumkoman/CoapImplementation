@@ -16,7 +16,7 @@ class coapOption{
 class coapPacket{
   public:
   uint8_t coapVersion;
-  coapOption cOption;
+  coapOption cOption[5];
   uint8_t type = 0;
   uint8_t code = 0;
   const uint8_t *token = NULL;
