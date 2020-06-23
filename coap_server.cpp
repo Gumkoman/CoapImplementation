@@ -47,6 +47,9 @@ bool coapServer::loop() {
     } else {
       uint8_t token = NULL;
     }//dodac czytanie tokena xd casme moze byc inny niz 0
+    for(int i =0;i < cPacket.tokenlen;i++){
+      cPacket.token[i] = packetBuffer[4+i];  
+    }
     //obsługa opcji
     int optionNumber = 0;
     bool isNextOption = true;
@@ -141,31 +144,62 @@ bool coapServer::loop() {
         cPacket.response.cOption[0].optionLength =2;
         cPacket.response.payload = "</zbior>;if=zbior;</metryka1>;if=metryka1;</metryka2>;if=metryka2;</metryka3>;if=metryka3;";
         */
-        uint8_t response[270];
-        response[0] = cPacket.coapVersion<<6;
-        if(cPacket.type == 1){
+        uint8_t response[100];
+//        m.coapVersion << 6 | 0b1 << 4 | m.tokenLength;
+        //response[0] = 64;
+        response[0] = cPacket.coapVersion<<6 |4 << 4 | cPacket.tokenlen;
+        /*if(cPacket.type == 1){
             response[0] =2<<4;
         }else if(cPacket.type == 0){
             response[0] =0<<4;
         }
-        response[0] = cPacket.tokenlen;
+        response[0] = cPacket.tokenlen;*/
         response[1] = 69;
         response[2] = cPacket.messageId>>8;
         response[3] = cPacket.messageId;
         int curretByte = 4;
+        Serial.println("Pokaz wiadmosci 1");
+        for(int i =0;i< sizeof(response);i++){
+          Serial.print(response[i]);
+          Serial.print(" ");  
+        }
+        Serial.println("Pokaz wiadmosci 4");
         if(cPacket.tokenlen>0){
           for(int i=0;i<cPacket.tokenlen;i++){
             response[curretByte+i] = cPacket.token[i];
             curretByte++;  
           }  
         }
-        response[curretByte]= 12>>4;
-        curretByte++;
-        response[curretByte]=2;
+        Serial.println("Pokaz wiadmosci 2");
+        for(int i =0;i< sizeof(response);i++){
+          Serial.print(response[i]);
+          Serial.print(" ");  
+        }
+        Serial.println("Pokaz wiadmosci 4");
+        response[curretByte]= 12>>4&2;
+        Serial.println("Pokaz wiadmosci 3");
+        for(int i =0;i< sizeof(response);i++){
+          Serial.print(response[i]);
+          Serial.print(" ");  
+        }
+        Serial.println("Pokaz wiadmosci 4");
+        //response[curretByte]&2;
         curretByte++;
         response[curretByte]=0;
+        Serial.println("Pokaz wiadmosci 4");
+        for(int i =0;i< sizeof(response);i++){
+          Serial.print(response[i]);
+          Serial.print(" ");  
+        }
+        Serial.println("Pokaz wiadmosci 4");
         curretByte++;
         response[curretByte]=40;
+        Serial.println("Pokaz wiadmosci 5");
+        for(int i =0;i< sizeof(response);i++){
+          Serial.print(response[i]);
+          Serial.print(" ");  
+        }
+        Serial.println("Pokaz wiadmosci 5");
         currentByte++;
         response[curretByte]=255;
         char payload[] = "</zbior>;if=zbior;</metryka1>;if=metryka1;</metryka2>;if=metryka2;</metryka3>;if=metryka3;";
@@ -178,6 +212,11 @@ bool coapServer::loop() {
         //cPacket.response.cOption[0].delta =12;
         //cPacket.response.cOption[0].optionLength =2;
         //cPacket.response.payload = "</zbior>;if=zbior;</metryka1>;if=metryka1;</metryka2>;if=metryka2;</metryka3>;if=metryka3;";
+        Serial.println("Pokaz wiadmosci");
+        for(int i =0;i< sizeof(response);i++){
+          Serial.print(response[i]);
+          Serial.print(" ");  
+        }
         Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
         Udp.write(response, sizeof(response));
         Udp.endPacket();
