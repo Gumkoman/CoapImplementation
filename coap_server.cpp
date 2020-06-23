@@ -5,6 +5,16 @@
 bool debug = true;
 byte MAC[] = {0x00, 0xAA, 0xBB, 0xCC, 0xDE, 0x01}; //MAC adres karty sieciowej, to powinno byc unikatowe - proforma dla ebsim'a
 unsigned int localPort = UDP_SERVER_PORT;
+
+bool isEqual(char* text1, char* text2, int textSize) {
+  for (int i = 0; i < textSize; i++) {
+    if (text1[i] != text2[i]) {
+      return false;
+    }
+    return true;
+  }
+
+}
 bool coapServer::start() {
 
   ObirEthernet.begin(MAC);
@@ -25,9 +35,6 @@ bool coapServer::loop() {
     packetBuffer[len] = '\0';
     packetMessage[len] = '\0';
     Serial.println((char*)packetBuffer);
-    //for(int i=0;i<packetSize;i++){
-    //    Serial.println(packetBuffer[i]);
-    //}
     coapPacket cPacket;
     cPacket.coapVersion = packetBuffer[0] & 196 >> 6;
     cPacket.type = packetBuffer[0] & 48 >> 4;
@@ -39,13 +46,13 @@ bool coapServer::loop() {
       uint8_t token = new uint8_t[cPacket.tokenlen];
     } else {
       uint8_t token = NULL;
-    }
+    }//dodac czytanie tokena xd casme moze byc inny niz 0
     //obsługa opcji
     int optionNumber = 0;
     bool isNextOption = true;
     int currentByte = 4 + cPacket.tokenlen;
     while (isNextOption) {
-      cPacket.cOption[optionNumber].delta = packetBuffer[currentByte] & 244 >> 4;
+      cPacket.cOption[optionNumber].delta = (packetBuffer[currentByte] & 244 ) >> 4;
       cPacket.cOption[optionNumber].optionLength = packetBuffer[currentByte] & 15;
       //handling extended option and lnght
       if (cPacket.cOption[optionNumber].delta == 13) {
@@ -56,11 +63,6 @@ bool coapServer::loop() {
         currentByte++;
         cPacket.cOption[optionNumber].optionLength += packetBuffer[currentByte];
       }
-      Serial.print("delta");
-      Serial.println(cPacket.cOption[optionNumber].delta);
-      Serial.print("lenght");
-      Serial.println(cPacket.cOption[optionNumber].optionLength);
-      //reading option Value
       currentByte++;
       if (cPacket.cOption[optionNumber].optionLength > 0) {
         cPacket.cOption[optionNumber].optionValue = new uint8_t[cPacket.cOption[optionNumber].optionLength];
@@ -77,76 +79,122 @@ bool coapServer::loop() {
         isNextOption = false;
       }
       optionNumber++;
-      Serial.println("Petleka");
     }
-
-    for(int i = 0 ; i < 5 ; i++){
+    for (int i = 0 ; i < 5 ; i++) {
       Serial.print("Coap option nr :");
       Serial.print(i);
       Serial.print(" delta of option: ");
       Serial.print(cPacket.cOption[i].delta);
-      Serial.print(" lenght of option value is :");  
+      Serial.print(" lenght of option value is :");
       Serial.print(cPacket.cOption[i].optionLength);
       Serial.println();
     }
-    Serial.print("Size od udp");
-    Serial.println(packetSize);
-    Serial.print("current Byte");
-    Serial.println(currentByte);
+
     //handling payload
-    if(currentByte==255){
-//      Cpacket.payload = new uint8_t[];
+    uint8_t payloadMarker = 255;
+    if (packetBuffer[currentByte] == payloadMarker) {
+      Serial.print("LUTAS");
+      int nextByte = currentByte;
+      while (packetBuffer[nextByte] != NULL) {
+        nextByte++;
+      }
+
+      Serial.print("nextByte");
+      Serial.println(nextByte);
+      cPacket.payload = new uint8_t[nextByte - currentByte - 1];
+      for (int i = 0; i < (nextByte - currentByte - 1); i++) {
+        cPacket.payload[i] = packetBuffer[i + currentByte + 1];
+
+      }
+
+
+
     }
-    /*cPacket.cOption[optionNumber].delta = packetBuffer[4+cPacket.tokenlen]&244>>4;
-      cPacket.cOption[optionNumber].optionLength = packetBuffer[4+cPacket.tokenlen]&15;
-      //option handling
-      int isOptionDeltaExtended = 0;
-      if(cPacket.cOption[optionNumber].delta > 13){
-      cPacket.cOption[optionNumber].delta+=packetBuffer[5+cPacket.tokenlen];
-      isOptionDeltaExtended=1;
-      }
-      if(debug){Serial.println(cPacket.cOption[optionNumber].delta);}
-
-      if(cPacket.cOption[optionNumber].optionLength==13){
-
-      }else if(cPacket.cOption[optionNumber].optionLength==14){
-
-      }
-      if(cPacket.cOption[optionNumber].optionLength>0){
-      cPacket.cOption[optionNumber].optionValue = new uint8_t[cPacket.cOption[optionNumber].optionLength];
-      }
-      for(int i = 0;i<cPacket.cOption[optionNumber].optionLength;i++){
-      int currentPacket=
-      cPacket.cOption[optionNumber].optionValue[i] = packetBuffer[3+cPacket.tokenlen+1+isOptionDeltaExtended+i];
-      }
-      Serial.print("kutas");
-      for(int i = 0;i<cPacket.cOption[optionNumber].optionLength;i++){
-      Serial.println((char)cPacket.cOption[optionNumber].optionValue[i]);
-      }
-      if(optionNumber=4){
-      isNextOption=false;
-      }*/
-  
-  //testy se kurwa robimy a co
-  if (debug) {
+    Serial.print("coapver ");
+    Serial.println(cPacket.coapVersion);
+    Serial.print("code ");
+    Serial.println(cPacket.code);
+    Serial.print("tokenlen ");
+    Serial.println(cPacket.tokenlen);
+    Serial.print("type ");
+    Serial.println(+cPacket.type);
+    Serial.print("messageId ");
+    Serial.println(cPacket.messageId);
     Serial.println();
+    //handeled recived message now givew a response
+    if (cPacket.code == 1) {
+      Serial.println("GET");
+      if (isEqual(".well-known", cPacket.cOption[0].optionValue, 11)) {
+      if (isEqual("core", cPacket.cOption[1].optionValue, 4)) {
+        Serial.println("getwellknowncore");
+        cPacket.response.coapVersion = cPacket.coapVersion;
+        /*if(cPacket.type == 1){
+            cPacket.response.type =2;
+        }else if(cPacket.type == 0){
+            cPacket.response.type =0;
+        }
+        cPacket.response.tokenlen = cPacket.tokenlen;
+        cPacket.response.code = 69;
+        cPacket.response.messageId = cPacket.messageId;
+        cPacket.response.token = cPacket.token;
+        cPacket.response.cOption[0].delta =12;
+        cPacket.response.cOption[0].optionLength =2;
+        cPacket.response.payload = "</zbior>;if=zbior;</metryka1>;if=metryka1;</metryka2>;if=metryka2;</metryka3>;if=metryka3;";
+        */
+        uint8_t response[270];
+        response[0] = cPacket.coapVersion<<6;
+        if(cPacket.type == 1){
+            response[0] =2<<4;
+        }else if(cPacket.type == 0){
+            response[0] =0<<4;
+        }
+        response[0] = cPacket.tokenlen;
+        response[1] = 69;
+        response[2] = cPacket.messageId>>8;
+        response[3] = cPacket.messageId;
+        int curretByte = 4;
+        if(cPacket.tokenlen>0){
+          for(int i=0;i<cPacket.tokenlen;i++){
+            response[curretByte+i] = cPacket.token[i];
+            curretByte++;  
+          }  
+        }
+        response[curretByte]= 12>>4;
+        curretByte++;
+        response[curretByte]=2;
+        curretByte++;
+        response[curretByte]=0;
+        curretByte++;
+        response[curretByte]=40;
+        currentByte++;
+        response[curretByte]=255;
+        char payload[] = "</zbior>;if=zbior;</metryka1>;if=metryka1;</metryka2>;if=metryka2;</metryka3>;if=metryka3;";
+        currentByte++;
+        for(int i=0;i<sizeof(payload);i++){
+          response[currentByte]=payload[i];
+          currentByte++;  
+        }
+        //cPacket.response.token = cPacket.token;
+        //cPacket.response.cOption[0].delta =12;
+        //cPacket.response.cOption[0].optionLength =2;
+        //cPacket.response.payload = "</zbior>;if=zbior;</metryka1>;if=metryka1;</metryka2>;if=metryka2;</metryka3>;if=metryka3;";
+        Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
+        Udp.write(response, sizeof(response));
+        Udp.endPacket();
+        
+        
+      }
+    }
   }
-  Serial.print("coapver ");
-  Serial.println(cPacket.coapVersion);
-  Serial.print("code ");
-  Serial.println(cPacket.code);
-  Serial.print("tokenlen ");
-  Serial.println(cPacket.tokenlen);
-  Serial.print("type ");
-  Serial.println(+cPacket.type);
-  Serial.print("messageId ");
-  Serial.println(cPacket.messageId);
-  //    Serial.print("optiondelta ");
-  //    Serial.println(cPacket.cOption.delta);
-  //    Serial.print("optionvaluelen ");
-  //    Serial.println(cPacket.cOption.optionLength);
 
-  //coapPacket coapPacket;
-  //coapPacket.getMessageFromPacket();
+
+
+  if (cPacket.code == 3) {
+    Serial.println("PUT");
+  }
+
+
 }
+
+
 }

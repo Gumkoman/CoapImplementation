@@ -11,7 +11,19 @@ class coapOption{
   uint8_t optionLength = 0;  
   uint8_t *optionValue;
 };
-
+class coapResponse{
+  public:
+  uint8_t coapVersion;
+  coapOption cOption[5];
+  uint8_t type = 0;
+  uint8_t code = 0;
+  uint8_t *token = NULL;
+  uint8_t tokenlen = 0;
+  uint8_t *payload ;
+  size_t payloadlen = 0;
+  uint16_t  messageId = 0;
+  uint8_t optionnum = 0;
+};
 
 class coapPacket{
   public:
@@ -19,13 +31,13 @@ class coapPacket{
   coapOption cOption[5];
   uint8_t type = 0;
   uint8_t code = 0;
-  const uint8_t *token = NULL;
+  uint8_t *token = NULL;
   uint8_t tokenlen = 0;
-  const uint8_t *payload = NULL;
+  uint8_t *payload ;
   size_t payloadlen = 0;
   uint16_t  messageId = 0;
   uint8_t optionnum = 0;
-  
+  coapResponse response;
   void bufferToPacket(uint8_t buffer[],int32_t packetlen);
   
 };
