@@ -137,7 +137,6 @@ bool coapServer::loop() {
           response[2] = cPacket.messageId >> 8;
           response[3] = cPacket.messageId;
           int currentByte = 4;
-          //response[currentByte] = 12 >> 4 | 2;//
           response[currentByte] = 194;//
           currentByte++;
           response[currentByte] = 0;
@@ -164,9 +163,50 @@ bool coapServer::loop() {
           Udp.write(response, sizeof(response));
           Udp.endPacket();
 
-
         }
       }
+
+      if (isEqual("zbior", cPacket.cOption[0].optionValue, 5)) {
+        //get zbior
+        Serial.println("zbior");
+        uint8_t response[100];
+        response[0] = cPacket.coapVersion << 6 | 4 << 4 | cPacket.tokenlen;
+        response[1] = 69;
+        response[2] = cPacket.messageId >> 8;
+        response[3] = cPacket.messageId;
+        int currentByte = 4;
+        if (cPacket.tokenlen > 0) {
+          for (int i = 0; i < cPacket.tokenlen; i++) {
+            response[currentByte] = cPacket.token[i];
+            currentByte++;
+          }
+        }
+        response[currentByte] = 194;
+        currentByte++;
+        response[currentByte] = 0;
+        currentByte++;
+        response[currentByte] = 0;
+        char *payload;
+        if (cPacket.token == 1) {
+          Serial.println("NWW NWD");
+        } else if (cPacket.token == 0) {
+          Serial.println("POKAZANIE ZBIORU");
+          if (this->zasob[0] == NULL) {
+            payload = "ZbiorPusty";
+            Serial.println("ZbiorPusty");
+          } else {
+            int i =0;
+            Serial.println("cos jest");
+            
+          }
+        }
+        Serial.println("Payload");
+        Serial.print(*payload);  
+        
+      }
+
+
+
     }
 
 

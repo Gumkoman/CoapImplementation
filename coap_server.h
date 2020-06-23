@@ -49,6 +49,7 @@ class coapServer{
   unsigned char packetMessage[PACKET_BUFFER_LENGTH]; 
   bool start();
   bool loop();
+  int zasob[5]={1, 3, 1, NULL, NULL};
 };
 
 
