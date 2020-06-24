@@ -6,6 +6,10 @@ bool debug = true;
 byte MAC[] = {0x00, 0xAA, 0xBB, 0xCC, 0xDE, 0x01}; //MAC adres karty sieciowej, to powinno byc unikatowe - proforma dla ebsim'a
 unsigned int localPort = UDP_SERVER_PORT;
 
+bool coapServer::addNumber(int newNumber, int currentSize) {
+  this->zasob[currentSize] = newNumber;
+}
+
 bool isEqual(char* text1, char* text2, int textSize) {
   for (int i = 0; i < textSize; i++) {
     if (text1[i] != text2[i]) {
@@ -15,6 +19,28 @@ bool isEqual(char* text1, char* text2, int textSize) {
   }
 
 }
+int gcd(int a, int b) 
+{ 
+    if (a == 0) 
+        return b; 
+    return gcd(b % a, a); 
+}
+
+int findGCD(int arr[], int n) 
+{ 
+    int result = arr[0]; 
+    for (int i = 1; i < n; i++) 
+    { 
+        result = gcd(arr[i], result); 
+  
+        if(result == 1) 
+        { 
+           return 1; 
+        } 
+    } 
+    return result; 
+} 
+
 bool coapServer::start() {
 
   ObirEthernet.begin(MAC);
@@ -83,27 +109,14 @@ bool coapServer::loop() {
       }
       optionNumber++;
     }
-    for (int i = 0 ; i < 5 ; i++) {
-      Serial.print("Coap option nr :");
-      Serial.print(i);
-      Serial.print(" delta of option: ");
-      Serial.print(cPacket.cOption[i].delta);
-      Serial.print(" lenght of option value is :");
-      Serial.print(cPacket.cOption[i].optionLength);
-      Serial.println();
-    }
 
     //handling payload
     uint8_t payloadMarker = 255;
     if (packetBuffer[currentByte] == payloadMarker) {
-      Serial.print("LUTAS");
       int nextByte = currentByte;
       while (packetBuffer[nextByte] != NULL) {
         nextByte++;
       }
-
-      Serial.print("nextByte");
-      Serial.println(nextByte);
       cPacket.payload = new uint8_t[nextByte - currentByte - 1];
       for (int i = 0; i < (nextByte - currentByte - 1); i++) {
         cPacket.payload[i] = packetBuffer[i + currentByte + 1];
@@ -113,25 +126,23 @@ bool coapServer::loop() {
 
 
     }
-    Serial.print("coapver ");
-    Serial.println(cPacket.coapVersion);
-    Serial.print("code ");
-    Serial.println(cPacket.code);
-    Serial.print("tokenlen ");
-    Serial.println(cPacket.tokenlen);
-    Serial.print("type ");
-    Serial.println(+cPacket.type);
-    Serial.print("messageId ");
-    Serial.println(cPacket.messageId);
-    Serial.println();
+    /*Serial.print("coapver ");
+      Serial.println(cPacket.coapVersion);
+      Serial.print("code ");
+      Serial.println(cPacket.code);
+      Serial.print("tokenlen ");
+      Serial.println(cPacket.tokenlen);
+      Serial.print("type ");
+      Serial.println(+cPacket.type);
+      Serial.print("messageId ");
+      Serial.println(cPacket.messageId);
+      Serial.println();*/
     //handeled recived message now givew a response
     if (cPacket.code == 1) {
-      Serial.println("GET");
       if (isEqual(".well-known", cPacket.cOption[0].optionValue, 11)) {
         if (isEqual("core", cPacket.cOption[1].optionValue, 4)) {
-          Serial.println("getwellknowncore");
           cPacket.response.coapVersion = cPacket.coapVersion;
-          uint8_t response[100];
+          uint8_t response[100] = {32};
           response[0] = cPacket.coapVersion << 6 | 4 << 4 | cPacket.tokenlen;
           response[1] = 69;
           response[2] = cPacket.messageId >> 8;
@@ -145,33 +156,132 @@ bool coapServer::loop() {
           currentByte++;
           response[currentByte] = 255;
           char payload[] = "</zbior>;if=zbior;</metryka1>;if=metryka1;</metryka2>;if=metryka2;</metryka3>;if=metryka3;";
+
           currentByte++;
           for (int i = 0; i < sizeof(payload); i++) {
             response[currentByte] = payload[i];
             currentByte++;
           }
-          //cPacket.response.token = cPacket.token;
-          //cPacket.response.cOption[0].delta =12;
-          //cPacket.response.cOption[0].optionLength =2;
-          //cPacket.response.payload = "</zbior>;if=zbior;</metryka1>;if=metryka1;</metryka2>;if=metryka2;</metryka3>;if=metryka3;";
           Serial.println("Pokaz wiadmosci");
           for (int i = 0; i < sizeof(response); i++) {
             Serial.print(response[i]);
             Serial.print(" ");
           }
+          free(payload);
           Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
           Udp.write(response, sizeof(response));
           Udp.endPacket();
-
+          free(response);
         }
       }
 
       if (isEqual("zbior", cPacket.cOption[0].optionValue, 5)) {
         //get zbior
         Serial.println("zbior");
+        byte response1[100];
+        response1[0] = cPacket.coapVersion << 6 | 4 << 4 | cPacket.tokenlen;
+        response1[1] = 69;
+        response1[2] = cPacket.messageId >> 8;
+        response1[3] = cPacket.messageId;
+        int currentByte = 4;
+        if (cPacket.tokenlen > 0) {
+          for (int i = 0; i < cPacket.tokenlen; i++) {
+            response1[currentByte] = cPacket.token[i];
+            currentByte++;
+          }
+        }
+        response1[currentByte] = 194;
+        currentByte++;
+        response1[currentByte] = 0b00000000;
+        currentByte++;
+        response1[currentByte] = 0b00000000;
+        currentByte++;
+
+
+        //        response1[currentByte] = 0;
+        //        currentByte++;
+        //char *payload1;
+        char payload1[20] = {(char)32} ;
+        if (cPacket.token == 1) {
+          Serial.println("NWW NWD");
+          int zasobLen = 0;
+            while (this->zasob[zasobLen] != NULL) {
+              zasobLen++  ;
+            }
+          int nwd = findGCD(this->zasob,zasobLen);
+          Serial.print("nwd");
+          Serial.println(nwd);
+          //int nww = 
+          payload1[0]='n';
+          payload1[1]='w';
+          payload1[2]='d';
+          payload1[3]=' '; 
+        } else if (cPacket.token == 0) {
+          Serial.println("POKAZANIE ZBIORU");
+          if (this->zasob[0] == NULL) {
+            char text[] = {"Brak liczb w zasobie"};
+            for (int i = 0; i < sizeof(text); i++) {
+              payload1[i] = text[i];
+            }
+          } else {
+            int zasobLen = 0;
+            while (this->zasob[zasobLen] != NULL) {
+              zasobLen++  ;
+            }
+            Serial.print("zasob len");
+            Serial.println(zasobLen);
+            for (int i = 0; i < zasobLen; i++) {
+              payload1[i] = this->zasob[i] + '0';
+            }
+
+          }
+
+          response1[currentByte] = 255;//payload marker
+          currentByte++;
+          for (int i = 0; i < sizeof(payload1); i++) {
+            response1[currentByte] = payload1[i];
+            currentByte++;
+          }
+          Serial.println();
+          for (int i = 0; i < sizeof(response1); i++) {
+            Serial.print(response1[i]);
+            Serial.print(" ");
+          }
+          Serial.println();
+        }
+        Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
+        Udp.write(response1, sizeof(response1));
+        Udp.endPacket();
+      }
+
+    }
+
+
+
+    if (cPacket.code == 3) {
+      Serial.println("PUT");
+      if (isEqual("zbior", cPacket.cOption[0].optionValue, 5)) {
+        int payloadSize = cPacket.cOption[1].optionValue;
+        for (int i = 0; i < sizeof(cPacket.payload); i++) {
+          Serial.print("|");
+          Serial.print(cPacket.payload[i]);
+          Serial.print(" ");
+          Serial.print(i);
+        }
+        Serial.println();
         uint8_t response[100];
         response[0] = cPacket.coapVersion << 6 | 4 << 4 | cPacket.tokenlen;
-        response[1] = 69;
+        int zasobLen = 0;
+        bool isSpaceFlag = false;
+        while (this->zasob[zasobLen] != NULL) {
+          zasobLen++  ;
+        }
+        if (zasobLen < 4) {
+          response[1] = 68;
+          isSpaceFlag = true;
+        } else {
+          response[1] = 140;
+        }
         response[2] = cPacket.messageId >> 8;
         response[3] = cPacket.messageId;
         int currentByte = 4;
@@ -181,40 +291,21 @@ bool coapServer::loop() {
             currentByte++;
           }
         }
-        response[currentByte] = 194;
-        currentByte++;
-        response[currentByte] = 0;
-        currentByte++;
-        response[currentByte] = 0;
-        char *payload;
-        if (cPacket.token == 1) {
-          Serial.println("NWW NWD");
-        } else if (cPacket.token == 0) {
-          Serial.println("POKAZANIE ZBIORU");
-          if (this->zasob[0] == NULL) {
-            payload = "ZbiorPusty";
-            Serial.println("ZbiorPusty");
-          } else {
-            int i =0;
-            Serial.println("cos jest");
-            
-          }
+        //adding to array
+        if (isSpaceFlag) {
+          int newNumber;
+          newNumber = cPacket.payload[0];
+          Serial.print("new numer");
+          newNumber -= 48;
+          Serial.println((int)newNumber);
+          Serial.println();
+          this->addNumber(newNumber, zasobLen);
         }
-        Serial.println("Payload");
-        Serial.print(*payload);  
-        
+        Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
+        Udp.write(response, sizeof(response));
+        Udp.endPacket();
       }
-
-
-
     }
-
-
-
-    if (cPacket.code == 3) {
-      Serial.println("PUT");
-    }
-
 
   }
 
