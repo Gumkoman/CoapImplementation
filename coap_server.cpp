@@ -1,5 +1,5 @@
 #include "coap_server.h"
-
+#include <math.h>
 #define PACKET_BUFFER_LENGTH        100
 #define UDP_SERVER_PORT 1234
 bool debug = true;
@@ -26,6 +26,20 @@ int gcd(int a, int b)
     return gcd(b % a, a); 
 }
 
+int findlcm(int arr[], int n) 
+{ 
+    // Initialize result 
+    int ans = arr[0]; 
+  
+    // ans contains LCM of arr[0], ..arr[i] 
+    // after i'th iteration, 
+    for (int i = 1; i < n; i++) 
+        ans = (((arr[i] * ans)) / 
+                (gcd(arr[i], ans))); 
+  
+    return ans; 
+}
+
 int findGCD(int arr[], int n) 
 { 
     int result = arr[0]; 
@@ -40,7 +54,17 @@ int findGCD(int arr[], int n)
     } 
     return result; 
 } 
-
+char * toArray(unsigned int number) {
+    int length = (int)floor(log10((float)number)) + 1;
+    char * arr = new char[length];
+    int i = 0;
+    do {
+        arr[i] = number % 10;
+        number /= 10;
+        i++;
+    } while (number != 0);
+    return arr;
+}
 bool coapServer::start() {
 
   ObirEthernet.begin(MAC);
@@ -202,7 +226,9 @@ bool coapServer::loop() {
         //        currentByte++;
         //char *payload1;
         char payload1[20] = {(char)32} ;
-        if (cPacket.token == 1) {
+        Serial.print("adsad");
+        Serial.println(cPacket.cOption[1].delta);
+        if (cPacket.cOption[1].delta == 6) {
           Serial.println("NWW NWD");
           int zasobLen = 0;
             while (this->zasob[zasobLen] != NULL) {
@@ -211,11 +237,24 @@ bool coapServer::loop() {
           int nwd = findGCD(this->zasob,zasobLen);
           Serial.print("nwd");
           Serial.println(nwd);
+          int nww = findlcm(this->zasob,zasobLen);
           //int nww = 
           payload1[0]='n';
           payload1[1]='w';
           payload1[2]='d';
-          payload1[3]=' '; 
+          payload1[3]=' ';
+          payload1[4]=nwd+48;
+          payload1[5]='n';
+          payload1[6]='w';
+          payload1[7]='w';
+          payload1[8]=' ';
+          char *nwwchar = toArray(nww);
+          Serial.print("NWW");
+          Serial.println(nww);
+          for(int i=0;i<sizeof(nwwchar);i++){
+            payload1[9+i]=nwwchar[sizeof(nwwchar)-i-1]+48;
+            Serial.println(nwwchar[i]);  
+          } 
         } else if (cPacket.token == 0) {
           Serial.println("POKAZANIE ZBIORU");
           if (this->zasob[0] == NULL) {
@@ -235,7 +274,13 @@ bool coapServer::loop() {
             }
 
           }
-
+        }
+          Serial.println("test");
+          for (int i = 0; i < sizeof(payload1); i++) {
+            Serial.print(payload1[i]);
+            Serial.print(" ");
+          }
+          Serial.println();
           response1[currentByte] = 255;//payload marker
           currentByte++;
           for (int i = 0; i < sizeof(payload1); i++) {
@@ -248,7 +293,7 @@ bool coapServer::loop() {
             Serial.print(" ");
           }
           Serial.println();
-        }
+        
         Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
         Udp.write(response1, sizeof(response1));
         Udp.endPacket();
